@@ -349,7 +349,9 @@ function targets(){
  }
  return T;
 }
+const KEYF=['shoulder','chest','waist','hip'];
 function verdict(k,d){const f=FK[k],L=k==='length'||k==='sleeve';
+ if(KEYF.includes(k)&&d<0)return['不夠','tight'];
  if(d<-f.tol)return[L?'偏短':'偏緊','tight'];if(d<=f.tol)return['剛好','ok'];if(d<=2.5*f.tol)return[L?'偏長':'偏鬆','loose'];return[L?'太長':'太大','big']}
 
 function render(){
@@ -363,20 +365,25 @@ function render(){
  const used=Object.keys(T).filter(k=>sizes.some(s=>s.g[k]!=null));
  if(!used.length)return empty(`這張表的欄位（${p.cols.map(c=>esc(c.h)).join('、')}）和你填的資料對不上。買${TYPES[S.type]}至少要能比到肩寬、胸、腰或臀其中之一。`);
  const sc=sizes.map((s,i)=>{let tot=0,ws=0;const d={};for(const k of used){const g=s.g[k];if(g==null)continue;const x=g-T[k].t,z=x/FK[k].tol;tot+=T[k].w*z*z*(x<0?2.2:1);ws+=T[k].w;d[k]=x}return{...s,i,d,tot:ws?tot/ws:Infinity}});
- const rank=[...sc].sort((a,b)=>a.tot-b.tot),best=rank[0],sec=rank[1];
+ const keys=used.filter(k=>KEYF.includes(k));
+ const mag=x=>{const v2=keys.map(k=>x.g[k]).filter(y=>y!=null);return v2.length?v2.reduce((a,b)=>a+b,0)/v2.length:x.i};
+ const short=x=>keys.filter(k=>x.d[k]!=null&&x.d[k]<0);
+ let best,alt,pass=[];
+ if(keys.length){
+  pass=sc.filter(x=>keys.some(k=>x.d[k]!=null)&&!short(x).length).sort((a,b)=>mag(a)-mag(b));
+  if(pass.length){best=pass[0];const nx=pass[1];
+   const lenShort=used.filter(k=>!KEYF.includes(k)&&best.d[k]!=null&&best.d[k]<-FK[k].tol);
+   alt=lenShort.length?`${lenShort.map(k=>FK[k].n).join('、')}會偏短`+(nx?`，想要長一點可選 ${nx.name}`:''):nx?`想穿寬鬆一點可選 ${nx.name}`:'這是唯一肩、胸、腰、臀都夠的尺寸'}
+  else{best=[...sc].sort((a,b)=>mag(b)-mag(a))[0];alt=`連最大的 ${best.name} 都不夠：${short(best).map(k=>`${FK[k].n}差 ${fmt(-best.d[k])}`).join('、')} cm`}
+ }else{best=[...sc].sort((a,b)=>a.tot-b.tot)[0];alt='這張表沒有肩、胸、腰、臀，只能比長度，僅供參考'}
+ const rank=[best,...pass.filter(x=>x!==best),...sc.filter(x=>x!==best&&!pass.includes(x)).sort((a,b)=>a.tot-b.tot)];
  $('bestSize').textContent=best.name;
- let alt='其他尺寸差距明顯';
- const heavyTight=used.filter(k=>best.d[k]!=null&&T[k].w>=1.5&&best.d[k]<-FK[k].tol);
- const allBig=used.every(k=>best.d[k]==null||best.d[k]>FK[k].tol);
- if(heavyTight.length)alt=`注意：${heavyTight.map(k=>FK[k].n).join('、')}仍偏緊`+(best.i<sizes.length-1?`，可考慮 ${sizes[best.i+1].name}`:'');
- else if(allBig)alt='連這個尺寸都偏大，版型可能本來就寬';
- else if(sec&&sec.tot<best.tot*1.8+.4)alt=`想穿${sec.i>best.i?'寬鬆':'合身'}一點可選 ${sec.name}`;
  $('altLine').textContent=alt;
  bars.innerHTML=`<div class="scale"><span></span><span><span>← 偏緊</span><span>剛好</span><span>偏鬆 →</span></span><span></span></div>`+used.filter(k=>best.d[k]!=null).map(k=>{const d=best.d[k],[vt,c]=verdict(k,d),pos=Math.max(-1,Math.min(1,d/(3*FK[k].tol)));
   return`<div class="bar"><span class="n">${FK[k].n}</span><div class="track"><div class="zone"></div><div class="mk ${c==='tight'?'warn':''}" style="left:${50+pos*50}%"></div></div><span class="val"><b>${sgn(d)}</b>${vt}</span></div>`}).join('');
  $('basis').textContent='比較基準：'+used.map(k=>`${FK[k].n} ${fmt(T[k].t)}（${T[k].src}）`).join('・');
  $('cmp').innerHTML=`<thead><tr><th>尺寸</th>${used.map(k=>`<th>${FK[k].n}</th>`).join('')}<th>評估</th></tr></thead><tbody>`+sc.map(s=>{const r=rank.indexOf(s);
-  return`<tr class="${s===best?'best':''}"><td class="sz">${esc(s.name)}</td>${used.map(k=>{if(s.g[k]==null)return'<td>—</td>';const[vt,c]=verdict(k,s.d[k]);return`<td><span class="chip c-${c}" title="${vt}">${fmt(s.g[k])}<b>${sgn(s.d[k])}</b></span></td>`}).join('')}<td class="rk">${r===0?'推薦':r===1?'次選':'第 '+(r+1)}</td></tr>`}).join('')+'</tbody>';
+  return`<tr class="${s===best?'best':''}"><td class="sz">${esc(s.name)}</td>${used.map(k=>{if(s.g[k]==null)return'<td>—</td>';const[vt,c]=verdict(k,s.d[k]);return`<td><span class="chip c-${c}" title="${vt}">${fmt(s.g[k])}<b>${sgn(s.d[k])}</b></span></td>`}).join('')}<td class="rk">${s===best?'推薦':short(s).length?short(s).map(k=>FK[k].n).join('、')+'不夠':'夠穿，較寬鬆'}</td></tr>`}).join('')+'</tbody>';
  last={T,used,sc,rank,notes};
 }
 function changed(){$('sampLine').hidden=true;save();render()}
