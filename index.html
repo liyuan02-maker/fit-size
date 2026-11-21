@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>衣服尺寸推薦</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: a tailor's fitting note — practical, calm, exact numbers.
+   IDEA: the hang tag on a garment, read against a measuring tape.
+   PICTURE: a large paper size tag on a denim band, beside tape-like fit meters per measurement.
+   COLOUR and TYPE: denim blue field, chalk white, tailor's-chalk red for "too tight"; Noto Sans TC + Barlow Condensed numerals.
+   LAYOUT: result band first, size comparison table, then three input columns (chart, body, reference garment). */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#0e131a);--ink:light-dark(#17202b,#e8edf3);--mut:light-dark(#5a6573,#9ba7b5);--line:light-dark(#dde2e8,#27313d);--field:light-dark(#f4f6f9,#161d26);--denim:light-dark(#2d5a88,#1b3655);--focus:light-dark(#2d5a88,#7fb0e0);
+--t-bg:light-dark(#fde3dd,#4a1d16);--t-ink:light-dark(#a8301d,#ffb3a6);--o-bg:light-dark(#e1ecf8,#183252);--o-ink:light-dark(#1f4a78,#a9cdf2);--l-bg:light-dark(#eef0f3,#212a35);--l-ink:light-dark(#4f5a67,#b8c2cd);--b-bg:light-dark(#fff1d6,#3d3015);--b-ink:light-dark(#8a5a00,#f0cf8a);--best:light-dark(#f2f6fb,#141e2a)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 'Noto Sans TC',system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(28px,4vw,64px) max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+pre,.scroll{overflow-x:auto}
+h1{font-size:clamp(32px,6vw,48px);line-height:1.05;margin:0 0 10px;font-weight:700;text-wrap:balance}
+h2{font-size:22px;line-height:1.2;margin:0 0 14px}
+.lede{color:var(--mut);margin:0;max-width:62ch}
+.top{padding-bottom:20px}
+.result{background:var(--denim);color:#f3f6fa;position:relative}
+.result::before,.result::after{content:"";position:absolute;left:0;right:0;border-top:2px dashed rgba(255,255,255,.28)}
+.result::before{top:8px}.result::after{bottom:8px}
+.res-grid{display:grid;grid-template-columns:minmax(0,250px) minmax(0,1fr);gap:clamp(24px,5vw,64px);align-items:center}
+.tag{background:#fbfbf8;color:#17202b;border-radius:16px;padding:22px 20px 20px;text-align:center;box-shadow:0 22px 34px -14px rgba(0,0,0,.55),inset 0 -4px 0 rgba(0,0,0,.06);transform:rotate(-3deg)}
+.hole{width:18px;height:18px;border-radius:50%;background:var(--denim);margin:0 auto 12px;box-shadow:inset 0 2px 3px rgba(0,0,0,.45)}
+.tag-k{font-size:14px;color:#5a6573}
+.tag-size{font:700 clamp(76px,14vw,124px)/1 'Barlow Condensed',sans-serif;margin:4px 0}
+.tag-alt{font-size:14px;color:#3c4652;min-height:2.6em;text-wrap:balance}
+.scale{display:grid;grid-template-columns:4.5em minmax(0,1fr) 8em;gap:12px;font-size:13px;opacity:.8}
+.scale span{display:flex;justify-content:space-between}
+.bar{display:grid;grid-template-columns:4.5em minmax(0,1fr) 8em;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.16)}
+.bar .n{font-weight:500}
+.track{position:relative;height:14px;border-radius:7px;background:rgba(255,255,255,.12)}
+.zone{position:absolute;left:33.33%;width:33.34%;top:0;bottom:0;background:rgba(255,255,255,.3);border-radius:7px}
+.mk{position:absolute;top:50%;width:22px;height:22px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);box-shadow:0 2px 6px rgba(0,0,0,.4);transition:left .45s ease}
+.mk.warn{background:#ff8a75}
+.val{text-align:right;white-space:nowrap;font-size:14px}
+.val b{font:600 21px 'Barlow Condensed',sans-serif;margin-right:6px}
+.basis{font-size:13px;opacity:.85;margin:14px 0 0}
+.msg{font-size:17px;max-width:46ch}
+.ai{margin-top:28px;padding-top:22px;border-top:1px solid rgba(255,255,255,.22);display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.advice{flex-basis:100%;white-space:pre-wrap;line-height:1.75;max-width:70ch}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 16px;border-radius:10px;border:1px solid var(--ink);background:transparent;color:var(--ink);font:inherit;font-size:15px;font-weight:500;cursor:pointer}
+.btn.light{border-color:rgba(255,255,255,.8);color:#fff}
+.btn.solid{background:#fff;color:#17202b;border-color:#fff}
+.btn:disabled{opacity:.5;cursor:wait}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.result :focus-visible{outline-color:#fff}
+table{border-collapse:collapse;width:100%;min-width:420px}
+th,td{padding:10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:14px;color:var(--mut);font-weight:500;white-space:nowrap}
+tr.best td{background:var(--best)}
+td.sz{font:700 24px 'Barlow Condensed',sans-serif;white-space:nowrap}
+td.rk{font-size:14px;color:var(--mut);white-space:nowrap}
+tr.best td.rk{color:var(--o-ink);font-weight:700}
+.chip{display:inline-block;padding:3px 8px;border-radius:7px;white-space:nowrap;font-size:14px}
+.chip b{font:600 17px 'Barlow Condensed',sans-serif;margin-left:4px}
+.c-tight{background:var(--t-bg);color:var(--t-ink)}.c-ok{background:var(--o-bg);color:var(--o-ink)}.c-loose{background:var(--l-bg);color:var(--l-ink)}.c-big{background:var(--b-bg);color:var(--b-ink)}
+.note,.hint,.status,.samp{font-size:14px;color:var(--mut)}
+.inputs .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:40px 48px}
+.inputs section{border-top:3px solid var(--ink);padding-top:16px}
+.f{display:block;font-size:14px;color:var(--mut);margin:12px 0 4px}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 10px}
+input,select,textarea{font:inherit;font-size:16px;width:100%;padding:9px 12px;min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--field);color:var(--ink)}
+textarea{font-family:'Barlow Condensed','Noto Sans TC',sans-serif;font-size:18px;line-height:1.45;resize:vertical;tab-size:6}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{flex:1 1 auto;min-height:44px;padding:8px 10px;border:1px solid var(--line);background:var(--field);color:var(--ink);border-radius:10px;font:inherit;font-size:15px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.parsed{font-size:14px;margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--field)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+[hidden]{display:none!important}
+.tabs{display:flex;gap:8px;padding:14px max(5vw,16px) 0;max-width:calc(1240px + 10vw);margin:0 auto}
+.tabs a{min-height:44px;display:inline-flex;align-items:center;padding:8px 18px;border-radius:999px;text-decoration:none;color:var(--ink);border:1px solid var(--line);font-weight:500}
+.tabs a[aria-current=page]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.closet-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:clamp(20px,4vw,48px);align-items:start}
+.stagewrap{background:var(--denim);border-radius:18px;padding:14px;display:flex;justify-content:center;position:relative}
+#stage{position:relative;overflow:hidden;border-radius:10px;touch-action:none;user-select:none;-webkit-user-select:none;background:#dfe6ee}
+#stage .photo{display:block;width:100%;height:auto;pointer-events:none}
+.wear{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;touch-action:none;cursor:grab;-webkit-user-drag:none}
+.wear.sel{filter:drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 4px #2d5a88)}
+.ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:45}
+.hd{position:absolute;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:#2d5a88;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);touch-action:none;cursor:grab;z-index:50}
+.hd span{position:absolute;left:30px;top:1px;white-space:nowrap;font-size:13px;background:rgba(23,32,43,.85);color:#fff;padding:1px 7px;border-radius:6px;pointer-events:none}
+.hd.mk2{background:#e8503a}
+.empty-stage{aspect-ratio:3/4;width:min(100%,420px);display:grid;place-items:center;text-align:center;color:#f3f6fa;padding:24px}
+.empty-stage svg{width:110px;height:auto;opacity:.55;margin-bottom:12px}
+.panel h3{font-size:18px;margin:26px 0 8px}
+.wornrow{border-top:1px solid var(--line);padding:12px 0}
+.wornrow.sel{border-top:3px solid var(--focus)}
+.wr-h{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.wr-h span{display:flex;gap:6px}
+.btn.sm{min-height:38px;padding:4px 11px;font-size:14px}
+.btn.ink{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 6px}
+.chips button{min-width:46px;min-height:42px;border:1px solid var(--line);background:var(--field);color:var(--ink);border-radius:9px;font:600 18px 'Barlow Condensed',sans-serif;cursor:pointer}
+.chips button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.ctl{display:grid;grid-template-columns:4.2em minmax(0,1fr) 3.4em;gap:8px;align-items:center;font-size:14px;color:var(--mut)}
+.ctl span:last-child{text-align:right}
+input[type=range]{padding:0;min-height:34px;background:none;border:0;accent-color:var(--focus)}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:10px}
+.thumb{border:2px solid var(--line);border-radius:12px;background:var(--field);padding:6px;text-align:center}
+.thumb.on{border-color:var(--focus)}
+.thumb .tb{all:unset;cursor:pointer;display:block;width:100%}
+.thumb .tb:focus-visible{outline:2px solid var(--focus)}
+.thumb img{width:100%;aspect-ratio:1;object-fit:contain;display:block}
+.thumb small{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px}
+.thumb .del{all:unset;cursor:pointer;font-size:13px;color:var(--mut);padding:6px;min-height:28px}
+.editor{margin-top:18px;padding:16px;border-radius:14px;background:var(--field);border:1px solid var(--line)}
+.editor input,.editor select{background:var(--bg)}
+.edstage{position:relative;touch-action:none;background:conic-gradient(#d4d8dd 25%,#f1f3f5 0 50%,#d4d8dd 0 75%,#f1f3f5 0) 0 0/20px 20px;border-radius:10px;overflow:hidden;margin-top:10px;user-select:none}
+#ecv{display:block;width:100%;height:auto}
+.panel .advice{margin-top:10px}
+@media(max-width:860px){.closet-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.res-grid{grid-template-columns:minmax(0,1fr)}.tag{max-width:230px;margin:0 auto}.bar,.scale{grid-template-columns:3.6em minmax(0,1fr) 6.6em;gap:8px}.val b{font-size:18px}table{font-size:13px}}
+@media(prefers-reduced-motion:reduce){.mk{transition:none}}
+</style>
+</head>
+<body>
+<nav class="tabs" aria-label="功能"><a href="#size" id="tab-size">選尺寸</a><a href="#closet" id="tab-closet">虛擬衣櫥</a></nav>
+<div id="v-size">
+<header class="band top"><div class="wrap">
+  <h1>該買哪個尺寸？</h1>
+  <p class="lede">貼上網站的尺寸表，填你的身材，或量一件你穿起來剛好的衣服，就能算出該下單的尺寸，並看到每個部位會緊還是鬆。</p>
+  <p class="samp" id="sampLine">目前填的是範例資料，換成你的數字就會即時更新。</p>
+</div></header>
+
+<section class="band result"><div class="wrap">
+  <div class="res-grid">
+    <div class="tag" aria-live="polite">
+      <div class="hole"></div>
+      <div class="tag-k">建議下單</div>
+      <div class="tag-size" id="bestSize">—</div>
+      <div class="tag-alt" id="altLine"></div>
+    </div>
+    <div>
+      <div id="bars"></div>
+      <p class="basis" id="basis"></p>
+      <button class="btn light" id="toCloset" type="button" style="margin-top:14px">把這件加入衣櫥試穿</button>
+    </div>
+  </div>
+  <div class="ai" id="aiBox" hidden>
+    <button class="btn solid" id="adviceBtn" type="button">請 Claude 綜合判斷</button>
+    <label class="btn light" id="prodLbl">附商品照（選填）<input type="file" id="prodImg" accept="image/*" multiple hidden></label>
+    <span class="status" id="prodStatus" style="color:#dbe6f2"></span>
+    <div class="advice" id="advice"></div>
+  </div>
+</div></section>
+
+<section class="band"><div class="wrap">
+  <h2>各尺寸比較</h2>
+  <div class="scroll"><table id="cmp"></table></div>
+  <p class="note">每格是衣服尺寸，後面的數字是「衣服 − 你需要的尺寸」（cm）。負數代表偏緊或偏短；圍度都已換算成一整圈。</p>
+</div></section>
+
+<section class="band inputs"><div class="wrap">
+  <section>
+    <h2>網站尺寸表</h2>
+    <div class="row" id="imgRow" hidden>
+      <label class="btn">上傳尺寸表截圖辨識<input type="file" id="chartImg" accept="image/*" multiple hidden></label>
+      <span class="status" id="imgStatus"></span>
+    </div>
+    <textarea id="chart" rows="7" spellcheck="false" aria-label="尺寸表"></textarea>
+    <p class="hint">第一列放欄位名稱（肩寬、胸圍或胸寬、腰圍、臀圍、衣長或褲長、袖長），之後每列一個尺寸。可以直接從網頁複製表格貼上，橫的直的都行，「96-100」這種範圍會取中間值。</p>
+    <div class="g3">
+      <div><label class="f" for="c_kind">表格類型</label><select id="c_kind"><option value="garment">衣服尺寸</option><option value="body">適穿身材</option></select></div>
+      <div><label class="f" for="c_flat">圍度量法</label><select id="c_flat"><option value="auto">自動判斷</option><option value="flat">平量</option><option value="circ">一整圈</option></select></div>
+      <div><label class="f" for="c_unit">單位</label><select id="c_unit"><option value="cm">公分</option><option value="inch">英吋</option></select></div>
+    </div>
+    <div class="parsed" id="parsed"></div>
+  </section>
+
+  <section>
+    <h2>我的身材</h2>
+    <label class="f">要買的是</label>
+    <div class="seg" id="type"><button type="button" data-v="top">上衣</button><button type="button" data-v="outer">外套</button><button type="button" data-v="pants">褲子</button><button type="button" data-v="dress">洋裝</button></div>
+    <label class="f">想穿得</label>
+    <div class="seg" id="fit"><button type="button" data-v="0">貼身</button><button type="button" data-v="1">合身</button><button type="button" data-v="2">寬鬆</button></div>
+    <div class="g3">
+      <div><label class="f" for="sex">版型</label><select id="sex"><option value="m">男</option><option value="f">女</option></select></div>
+      <div><label class="f" for="height">身高 cm</label><input id="height" type="number" inputmode="decimal"></div>
+      <div><label class="f" for="weight">體重 kg</label><input id="weight" type="number" inputmode="decimal"></div>
+    </div>
+    <div class="g2">
+      <div><label class="f" for="b_shoulder">肩寬 cm</label><input id="b_shoulder" type="number" inputmode="decimal"></div>
+      <div><label class="f" for="b_chest">胸圍 cm</label><input id="b_chest" type="number" inputmode="decimal"></div>
+      <div><label class="f" for="b_waist">腰圍 cm</label><input id="b_waist" type="number" inputmode="decimal"></div>
+      <div><label class="f" for="b_hip">臀圍 cm</label><input id="b_hip" type="number" inputmode="decimal"></div>
+    </div>
+    <p class="hint">量的是身體一整圈。留空會用身高體重估算（灰字），誤差可能有 3–6 公分，有量最好。</p>
+  </section>
+
+  <section>
+    <h2>參考：一件穿起來剛好的衣服</h2>
+    <p class="hint" style="margin-top:0">衣服攤平量。胸寬是兩邊腋下之間的直線，腰寬、臀寬同理，不用乘二。有填的部位會優先用它比對，最準。</p>
+    <div class="g2">
+      <div><label class="f" for="r_label">它標的尺寸</label><input id="r_label" type="text"></div>
+      <div><label class="f" for="r_shoulder">肩寬</label><input id="r_shoulder" type="number" inputmode="decimal"></div>
+      <div><label class="f" for="r_chest">胸寬（平量）</label><input id="r_chest" type="number" inputmode="decimal"></div>
+      <div><label class="f" for="r_waist">腰寬（平量）</label><input id="r_waist" type="number" inputmode="decimal"></div>
+      <div><label class="f" for="r_hip">臀寬（平量）</label><input id="r_hip" type="number" inputmode="decimal"></div>
+      <div><label class="f" for="r_length">衣長／褲長</label><input id="r_length" type="number" inputmode="decimal"></div>
+      <div><label class="f" for="r_sleeve">袖長</label><input id="r_sleeve" type="number" inputmode="decimal"></div>
+    </div>
+    <div class="row" style="margin-top:16px"><button class="btn" type="button" id="clearRef">清空參考衣服</button><button class="btn" type="button" id="resetAll">回到範例</button></div>
+  </section>
+</div></section>
+</div>
+
+<div id="v-closet" hidden>
+<header class="band top"><div class="wrap">
+  <h1>穿上看看</h1>
+  <p class="lede">放一張你的全身照，再把網站上的衣服圖片加進衣櫥。衣服會照尺寸表的實際公分數縮放到你身上，切換 S、M、L 就看得出長度和寬度差多少。</p>
+</div></header>
+<section class="band" style="padding-top:0"><div class="wrap closet-grid">
+  <div class="stagewrap" id="stageWrap">
+    <div class="empty-stage" id="emptyStage"><div>
+      <svg viewBox="0 0 60 120" aria-hidden="true"><circle cx="30" cy="12" r="10" fill="#fff"/><path d="M12 30q18-8 36 0l4 44h-8l-2 44h-8l-4-36-4 36h-8l-2-44H8z" fill="#fff"/></svg>
+      <p>先放一張正面全身照<br>站直、手稍微離開身體，背景越單純越好</p>
+      <label class="btn solid">選擇照片<input type="file" id="photoIn" accept="image/*" hidden></label>
+    </div></div>
+    <div id="stage" hidden><img class="photo" id="photoEl" alt="你的全身照"><svg class="ov" id="ov"></svg><div class="hd" data-drag="head" id="hHead"><span>頭頂</span></div><div class="hd" data-drag="feet" id="hFeet"><span>腳底</span></div></div>
+  </div>
+  <div class="panel">
+    <div class="row"><label class="btn sm">換照片<input type="file" id="photoIn2" accept="image/*" hidden></label><span class="note" id="calNote"></span></div>
+    <p class="hint" style="margin:0">把藍點拖到頭頂和腳底，工具會用你的身高換算比例。衣服可以直接拖曳移動。</p>
+    <h3>身上穿的</h3>
+    <div id="worn"></div>
+    <div class="row" id="lookBox" hidden style="margin-top:12px"><button class="btn" id="lookBtn" type="button">請 Claude 看看這套</button></div>
+    <div class="advice" id="look"></div>
+    <h3>我的衣櫥</h3>
+    <div class="thumbs" id="thumbs"></div>
+    <div class="row" style="margin-top:12px"><button class="btn" id="addBtn" type="button">＋ 新增衣服</button></div>
+    <p class="note" id="cNote"></p>
+    <div class="editor" id="editor" hidden>
+      <h3 style="margin-top:0">新增衣服</h3>
+      <div class="row"><label class="btn sm">選衣服圖片<input type="file" id="eImg" accept="image/*" hidden></label><span class="note" id="eStatus">白底平拍圖效果最好，可以從網站長按存圖。</span></div>
+      <div class="edstage" id="edStage" hidden><canvas id="ecv"></canvas><svg class="ov" id="eov"></svg><div class="hd mk2" data-drag="a" id="eA"></div><div class="hd mk2" data-drag="b" id="eB"></div></div>
+      <div class="ctl" style="margin-top:10px"><span>去背</span><input type="range" id="eTol" min="0" max="120" value="40" aria-label="去背強度"><span id="eTolV">40</span></div>
+      <div class="g2">
+        <div><label class="f" for="eName">名稱</label><input id="eName" type="text"></div>
+        <div><label class="f" for="eType">類型</label><select id="eType"><option value="top">上衣</option><option value="outer">外套</option><option value="pants">褲子</option><option value="dress">洋裝</option></select></div>
+        <div><label class="f" for="eDim">紅點標的是</label><select id="eDim"><option value="shoulder">肩寬（兩肩點）</option><option value="chest">胸寬（腋下到腋下）</option><option value="waist">腰寬</option><option value="hip">臀寬</option><option value="length">衣長／褲長</option></select></div>
+        <div><label class="f" for="eSize">圖片是哪個尺寸</label><select id="eSize"></select></div>
+        <div><label class="f" for="eCm">這段的公分數</label><input id="eCm" type="number" inputmode="decimal"></div>
+      </div>
+      <p class="hint">把兩個紅點拖到衣服上對應的位置（例如左右肩點）。公分數會從「選尺寸」頁的尺寸表帶入，用平量值。</p>
+      <div class="row"><button class="btn ink" id="eSave" type="button">存進衣櫥並穿上</button><button class="btn" id="eCancel" type="button">取消</button></div>
+    </div>
+  </div>
+</div></section>
+<section class="band" style="padding-top:0"><div class="wrap"><p class="note" style="max-width:70ch">這是依比例的 2D 疊圖，不是 AI 生成的試穿照：衣服不會順著身體彎曲，也看不出皺褶和垂墜。不過長度落在哪裡、肩線寬窄、兩個尺寸差多少，看得很清楚。商品圖用平拍或隱形人台的照片最好；模特兒穿著的照片去背時，會連人一起留下來。照片和衣櫥只存在這台裝置的瀏覽器裡。</p></div></section>
+</div>
+
+<script>
+{
+const $=id=>document.getElementById(id);
+const F=[
+ {k:'shoulder',n:'肩寬',re:/肩|shoulder/i,c:0,tol:1.5,w:{top:3,outer:3,pants:0,dress:2}},
+ {k:'sleeve',n:'袖長',re:/袖|sleeve/i,c:0,tol:2.5,w:{top:1,outer:1.2,pants:0,dress:.5}},
+ {k:'chest',n:'胸圍',re:/胸|bust|chest/i,c:1,tol:4,lim:70,w:{top:3,outer:3,pants:0,dress:3}},
+ {k:'waist',n:'腰圍',re:/腰|waist/i,c:1,tol:3,lim:55,w:{top:.8,outer:.4,pants:3,dress:2}},
+ {k:'hip',n:'臀圍',re:/臀|hip/i,c:1,tol:4,lim:70,w:{top:.5,outer:.5,pants:2.5,dress:2}},
+ {k:'length',n:'長度',re:/長|length/i,c:0,tol:3,w:{top:1,outer:1,pants:1.5,dress:1}}
+];
+const FK=Object.fromEntries(F.map(f=>[f.k,f]));
+const EASE={chest:{top:[4,8,16],outer:[8,12,20],dress:[4,8,14]},waist:{top:[8,14,24],outer:[10,16,26],dress:[3,6,12],pants:[0,2,4]},hip:{top:[6,10,16],outer:[8,12,18],dress:[4,7,12],pants:[3,6,10]},shoulder:{top:[0,1,4],outer:[1,2,5],dress:[0,1,3]}};
+const LEN={top:.41,outer:.43,pants:.6};
+const TYPES={top:'上衣',outer:'外套',pants:'褲子',dress:'洋裝'},FITS=['貼身','合身','寬鬆'];
+const ids=['sex','height','weight','b_shoulder','b_chest','b_waist','b_hip','r_label','r_shoulder','r_chest','r_waist','r_hip','r_length','r_sleeve','chart','c_kind','c_flat','c_unit'];
+const DEF={type:'top',fit:1,sex:'m',height:175,weight:68,r_label:'M',r_shoulder:46,r_chest:53,r_length:70,chart:'尺寸\t肩寬\t胸寬\t衣長\t袖長\nS\t44\t50\t67\t20\nM\t46\t53\t70\t21\nL\t48\t56\t73\t22\nXL\t50\t59\t75\t23',c_kind:'garment',c_flat:'auto',c_unit:'cm'};
+const KEY='fit-size-v1';
+const S={type:'top',fit:1};
+let last=null,prodFiles=[],sample=null;
+
+function apply(st){for(const id of ids)$(id).value=st[id]??'';S.type=st.type||'top';S.fit=+(st.fit??1);segs()}
+function save(){const st={type:S.type,fit:S.fit};for(const id of ids)st[id]=$(id).value;try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
+function segs(){for(const b of $('type').children)b.setAttribute('aria-pressed',b.dataset.v===S.type);for(const b of $('fit').children)b.setAttribute('aria-pressed',+b.dataset.v===S.fit)}
+const v=id=>{const x=parseFloat($(id).value);return isFinite(x)&&x>0?x:null};
+const r5=x=>Math.round(x*2)/2;
+const fmt=x=>(Math.round(x*10)/10).toString();
+const sgn=x=>(x>0?'+':x<0?'−':'±')+fmt(Math.abs(x));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function est(){const H=v('height'),W=v('weight');if(!H||!W)return{};const b=W/(H/100)**2;
+ return $('sex').value==='f'?{shoulder:r5(.245*H),chest:r5(.53*H+(b-21)*2.4),waist:r5(.42*H+(b-21)*3),hip:r5(.57*H+(b-21)*2.6)}
+ :{shoulder:r5(.26*H),chest:r5(.52*H+(b-22)*2.4),waist:r5(.45*H+(b-22)*3.2),hip:r5(.53*H+(b-22)*2.2)}}
+
+function num(s){const m=String(s).match(/\d+(\.\d+)?/g);if(!m)return null;const a=m.map(Number);return a.length>1?(a[0]+a[1])/2:a[0]}
+const field=h=>F.find(f=>f.re.test(h));
+function parse(txt){
+ let rows=txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(l=>l.split(/\t|\s*[|,，、;；]\s*|\s+/).filter(c=>c!==''));
+ if(rows.length<2)return null;
+ if(rows[0].length===rows[1].length-1)rows[0].unshift('尺寸');
+ const hitR=rows[0].slice(1).filter(c=>field(c)).length,hitC=rows.slice(1).filter(r=>field(r[0])).length;
+ if(hitC>hitR){const n=Math.max(...rows.map(r=>r.length));rows=Array.from({length:n},(_,j)=>rows.map(r=>r[j]??''))}
+ const seen=new Set(),cols=[];
+ rows[0].forEach((h,j)=>{const f=j&&field(h);if(f&&!seen.has(f.k)){seen.add(f.k);cols.push({j,f,h})}});
+ const sizes=rows.slice(1).filter(r=>r[0]).map(r=>({name:r[0],raw:Object.fromEntries(cols.map(c=>[c.f.k,num(r[c.j]??'')]))})).filter(s=>Object.values(s.raw).some(x=>x!=null));
+ return{cols,sizes};
+}
+function toCm(p){
+ const u=$('c_unit').value==='inch'?2.54:1,mode=$('c_flat').value,mult={},notes=[];
+ for(const c of p.cols){const f=c.f;if(!f.c){mult[f.k]=u;continue}
+  let m=mode==='flat'?2:1;
+  if(mode==='auto'){const vals=p.sizes.map(s=>s.raw[f.k]).filter(x=>x!=null).sort((a,b)=>a-b);const med=vals[vals.length>>1]*u;if(med<f.lim){m=2;notes.push(`「${c.h}」看起來是平量，已乘 2 換成一整圈`)}}
+  mult[f.k]=u*m}
+ return{sizes:p.sizes.map(s=>({name:s.name,g:Object.fromEntries(Object.entries(s.raw).map(([k,x])=>[k,x==null?null:x*mult[k]]))})),notes};
+}
+function targets(){
+ const kind=$('c_kind').value,e=est(),H=v('height'),T={},t=S.type,fit=S.fit;
+ for(const f of F){if(!f.w[t])continue;const r=v('r_'+f.k);
+  if(kind==='garment'&&r){T[f.k]={t:f.c?r*2:r,src:'參考衣服',w:f.w[t]*1.3};continue}
+  if(f.k==='length'){if(kind==='garment'&&H&&LEN[t])T.length={t:r5(LEN[t]*H),src:'依身高粗估',w:f.w[t]*.3};continue}
+  if(f.k==='sleeve')continue;
+  const mb=v('b_'+f.k),b=mb||e[f.k];if(!b)continue;
+  const ease=kind==='garment'?(EASE[f.k]?.[t]?.[fit]||0):0;
+  let w=f.w[t]*(mb?1:.6);if(f.k==='shoulder'&&fit===2)w*=.5;
+  T[f.k]={t:b+ease,src:(mb?'你的':'估算')+f.n+(ease?` + 鬆份 ${ease}`:''),w};
+ }
+ return T;
+}
+function verdict(k,d){const f=FK[k],L=k==='length'||k==='sleeve';
+ if(d<-f.tol)return[L?'偏短':'偏緊','tight'];if(d<=f.tol)return['剛好','ok'];if(d<=2.5*f.tol)return[L?'偏長':'偏鬆','loose'];return[L?'太長':'太大','big']}
+
+function render(){
+ const e=est();for(const k of['shoulder','chest','waist','hip'])$('b_'+k).placeholder=e[k]?'估 '+e[k]:'';
+ const p=parse($('chart').value);const bars=$('bars');
+ const empty=m=>{$('bestSize').textContent='—';$('altLine').textContent='';bars.innerHTML=`<p class="msg">${m}</p>`;$('basis').textContent='';$('cmp').innerHTML='';last=null};
+ if(!p||!p.sizes.length){$('parsed').textContent='還沒讀到尺寸表。';return empty('先在下方貼上網站的尺寸表。')}
+ if(!p.cols.length){$('parsed').textContent='讀到尺寸，但認不出欄位名稱。第一列請寫「肩寬、胸圍、衣長」這類名稱。';return empty('尺寸表的欄位名稱認不出來，請檢查第一列。')}
+ const {sizes,notes}=toCm(p),T=targets();
+ $('parsed').innerHTML=`讀到 ${sizes.length} 個尺寸：${sizes.map(s=>esc(s.name)).join('、')}；欄位：${p.cols.map(c=>esc(c.h)).join('、')}。`+(notes.length?'<br>'+notes.map(esc).join('<br>'):'')+($('c_kind').value==='body'?'<br>適穿身材表會直接和你的身材比，不使用參考衣服。':'');
+ const used=Object.keys(T).filter(k=>sizes.some(s=>s.g[k]!=null));
+ if(!used.length)return empty(`這張表的欄位（${p.cols.map(c=>esc(c.h)).join('、')}）和你填的資料對不上。買${TYPES[S.type]}至少要能比到肩寬、胸、腰或臀其中之一。`);
+ const sc=sizes.map((s,i)=>{let tot=0,ws=0;const d={};for(const k of used){const g=s.g[k];if(g==null)continue;const x=g-T[k].t,z=x/FK[k].tol;tot+=T[k].w*z*z*(x<0?2.2:1);ws+=T[k].w;d[k]=x}return{...s,i,d,tot:ws?tot/ws:Infinity}});
+ const rank=[...sc].sort((a,b)=>a.tot-b.tot),best=rank[0],sec=rank[1];
+ $('bestSize').textContent=best.name;
+ let alt='其他尺寸差距明顯';
+ const heavyTight=used.filter(k=>best.d[k]!=null&&T[k].w>=1.5&&best.d[k]<-FK[k].tol);
+ const allBig=used.every(k=>best.d[k]==null||best.d[k]>FK[k].tol);
+ if(heavyTight.length)alt=`注意：${heavyTight.map(k=>FK[k].n).join('、')}仍偏緊`+(best.i<sizes.length-1?`，可考慮 ${sizes[best.i+1].name}`:'');
+ else if(allBig)alt='連這個尺寸都偏大，版型可能本來就寬';
+ else if(sec&&sec.tot<best.tot*1.8+.4)alt=`想穿${sec.i>best.i?'寬鬆':'合身'}一點可選 ${sec.name}`;
+ $('altLine').textContent=alt;
+ bars.innerHTML=`<div class="scale"><span></span><span><span>← 偏緊</span><span>剛好</span><span>偏鬆 →</span></span><span></span></div>`+used.filter(k=>best.d[k]!=null).map(k=>{const d=best.d[k],[vt,c]=verdict(k,d),pos=Math.max(-1,Math.min(1,d/(3*FK[k].tol)));
+  return`<div class="bar"><span class="n">${FK[k].n}</span><div class="track"><div class="zone"></div><div class="mk ${c==='tight'?'warn':''}" style="left:${50+pos*50}%"></div></div><span class="val"><b>${sgn(d)}</b>${vt}</span></div>`}).join('');
+ $('basis').textContent='比較基準：'+used.map(k=>`${FK[k].n} ${fmt(T[k].t)}（${T[k].src}）`).join('・');
+ $('cmp').innerHTML=`<thead><tr><th>尺寸</th>${used.map(k=>`<th>${FK[k].n}</th>`).join('')}<th>評估</th></tr></thead><tbody>`+sc.map(s=>{const r=rank.indexOf(s);
+  return`<tr class="${s===best?'best':''}"><td class="sz">${esc(s.name)}</td>${used.map(k=>{if(s.g[k]==null)return'<td>—</td>';const[vt,c]=verdict(k,s.d[k]);return`<td><span class="chip c-${c}" title="${vt}">${fmt(s.g[k])}<b>${sgn(s.d[k])}</b></span></td>`}).join('')}<td class="rk">${r===0?'推薦':r===1?'次選':'第 '+(r+1)}</td></tr>`}).join('')+'</tbody>';
+ last={T,used,sc,rank,notes};
+}
+function changed(){$('sampLine').hidden=true;save();render()}
+
+let saved=null;try{saved=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+apply(saved||DEF);if(saved)$('sampLine').hidden=true;
+document.addEventListener('input',ev=>{const t=ev.target;if(t.id&&ids.includes(t.id))changed()});
+$('type').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;S.type=b.dataset.v;segs();changed()});
+$('fit').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;S.fit=+b.dataset.v;segs();changed()});
+$('clearRef').addEventListener('click',()=>{for(const id of ids)if(id.startsWith('r_'))$(id).value='';changed()});
+$('resetAll').addEventListener('click',()=>{apply(DEF);try{localStorage.removeItem(KEY)}catch(e){}$('sampLine').hidden=false;render()});
+render();
+
+(async()=>{try{if(!window.claude||!claude.use)return;sample=await claude.use('sample');if(!sample)return;
+ $('aiBox').hidden=false;let img=false;try{img=!!(await sample.limits())?.images}catch(e){}
+ if(img){$('imgRow').hidden=false;$('lookBox').hidden=false}else $('prodLbl').hidden=true}catch(e){}})();
+
+const fail=(el,e)=>{if(e&&e.code==='not_granted'){$('aiBox').hidden=true;$('imgRow').hidden=true}el.textContent=e&&e.code==='rate_limited'?'太多次了，稍等一下再試。':'沒有成功：'+((e&&e.message)||'請再試一次')};
+
+$('chartImg').addEventListener('change',async ev=>{const files=[...ev.target.files];ev.target.value='';if(!files.length||!sample)return;
+ const st=$('imgStatus');st.textContent='辨識中…';
+ try{const r=await sample.json('你會看到服飾購物網站的尺寸表圖片。只回 JSON，不要其他文字，格式：{"table":"用 \\t 分欄、\\n 分列的表格文字。第一列是表頭，第一欄是尺寸名稱（S、M、L…），欄位名稱用繁體中文（肩寬、胸圍或胸寬、腰圍、臀圍、衣長、褲長、袖長、大腿圍…，照圖上原意），數值只寫數字，範圍寫成 96-100","kind":"garment（衣服本身的尺寸）或 body（建議適穿的身體尺寸）","flat":"flat（平量）、circ（一整圈）或 unknown","unit":"cm 或 inch"}。如果圖上有多張表，取衣服尺寸那張。',{images:files,modelTier:'default'});
+  if(!r||!r.table)throw{message:'圖上找不到尺寸表'};
+  $('chart').value=r.table;if(r.kind==='body'||r.kind==='garment')$('c_kind').value=r.kind;
+  $('c_flat').value=r.flat==='flat'?'flat':r.flat==='circ'?'circ':'auto';if(r.unit==='inch'||r.unit==='cm')$('c_unit').value=r.unit;
+  st.textContent='已填入，請對一下數字有沒有讀錯。';changed()}catch(e){fail(st,e)}});
+
+$('prodImg').addEventListener('change',ev=>{prodFiles=[...ev.target.files].slice(0,4);$('prodStatus').textContent=prodFiles.length?`已附 ${prodFiles.length} 張商品照`:''});
+
+$('adviceBtn').addEventListener('click',async()=>{if(!sample)return;const out=$('advice'),btn=$('adviceBtn');
+ const info={要買:TYPES[S.type],想穿得:FITS[S.fit],版型:$('sex').value==='f'?'女':'男',身高:v('height'),體重:v('weight'),
+  身材_有量的:Object.fromEntries(['shoulder','chest','waist','hip'].filter(k=>v('b_'+k)).map(k=>[FK[k].n,v('b_'+k)])),
+  身材_估算:est(),參考衣服_平量:Object.fromEntries(ids.filter(id=>id.startsWith('r_')&&$(id).value).map(id=>[$(id).previousElementSibling?.textContent||id,$(id).value])),
+  尺寸表原文:$('chart').value,表格類型:$('c_kind').value==='body'?'適穿身材':'衣服尺寸',
+  計算結果:last?last.rank.map(s=>({尺寸:s.name,差值_衣服減需求_cm:Object.fromEntries(Object.entries(s.d).map(([k,d])=>[FK[k].n,Math.round(d*10)/10]))})):'無'};
+ btn.disabled=true;out.textContent='思考中…';
+ try{await sample(`你是熟悉服裝版型的店員，幫顧客決定網購該選哪個尺寸。以下是顧客資料、網站尺寸表和工具算出的各尺寸差值（圍度皆為一整圈，cm；負數代表偏緊或偏短）。${prodFiles.length?'也附上了商品照片，請從照片判斷版型（例如落肩、oversize、修身、布料彈性）並納入考量。':''}
+請用繁體中文回答，220 字內：第一行直接寫「建議：X」，接著說明理由、哪裡可能偏緊或偏長，若在兩個尺寸之間要怎麼取捨。估算的身材數字誤差較大，提醒時要點出。不要用 markdown 標題。
+資料：${JSON.stringify(info)}`,{images:prodFiles.length?prodFiles:undefined,modelTier:'default',cache:false,onText:({text})=>{out.textContent=text}})}
+ catch(e){fail(out,e)}finally{btn.disabled=false}});
+
+/* ---------- 虛擬衣櫥 ---------- */
+const idb=(()=>{let p;const open=()=>p||(p=new Promise((res,rej)=>{const r=indexedDB.open('fit-closet',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}));
+ const tx=(m,f)=>open().then(db=>new Promise((res,rej)=>{const t=db.transaction('kv',m);const q=f(t.objectStore('kv'));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)}));
+ return{get:key=>tx('readonly',s=>s.get(key)),set:(key,val)=>tx('readwrite',s=>s.put(val,key))}})();
+const C={photo:null,pw:0,ph:0,head:null,feet:null,items:[]};
+const BASEZ={pants:1,dress:2,top:3,outer:4};
+let sel=null,k=1,saveT,E=null;
+const urls=new Map();
+const url=(key,blob)=>{let u=urls.get(key);if(!u||u.b!==blob){if(u)URL.revokeObjectURL(u.u);u={u:URL.createObjectURL(blob),b:blob};urls.set(key,u)}return u.u};
+const csave=()=>{clearTimeout(saveT);saveT=setTimeout(()=>{try{idb.set('closet',C).catch(noSave)}catch(e){noSave()}},300)};
+const noSave=()=>{$('cNote').textContent='這個瀏覽器無法保存衣櫥，關掉頁面後會消失。'};
+const dist=(p,q)=>Math.hypot(p.x-q.x,p.y-q.y);
+const lerp=(p,q,t)=>({x:p.x+(q.x-p.x)*t,y:p.y+(q.y-p.y)*t});
+const mid=it=>lerp(it.a,it.b,.5);
+const bodyH=()=>v('height')||170;
+const loadImg=blob=>new Promise((res,rej)=>{const i=new Image(),u=URL.createObjectURL(blob);i.onload=()=>{res(i);setTimeout(()=>URL.revokeObjectURL(u),1000)};i.onerror=()=>rej(new Error('讀不到這張圖'));i.src=u});
+async function shrink(file,max){const img=await loadImg(file);const r=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));const c=document.createElement('canvas');c.width=Math.round(img.naturalWidth*r);c.height=Math.round(img.naturalHeight*r);c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c}
+const toBlob=(c,t,q)=>new Promise(r=>c.toBlob(r,t,q));
+function sizeG(it,n){const s=it.sizes.find(z=>z.name===n);return s?s.g:null}
+function itemCm(it){const a=sizeG(it,it.size)?.[it.dim],b=sizeG(it,it.saved)?.[it.dim];return a!=null&&b?it.cm*a/b:it.cm}
+function scaleOf(it){if(!C.head)return 1;const bp=dist(C.head,C.feet)/bodyH(),ip=dist(it.a,it.b)/itemCm(it);return bp/ip*(it.fine||1)}
+function defPos(it){return lerp(C.head,C.feet,{shoulder:.185,chest:.27,waist:.42,hip:.5,length:.4}[it.dim]||.3)}
+const worn=()=>C.items.filter(i=>i.worn).sort((a,b)=>a.z-b.z);
+
+function cstage(){
+ const has=!!C.photo;$('stage').hidden=!has;$('emptyStage').hidden=has;if(!has)return;
+ const wrap=$('stageWrap'),W=Math.max(200,Math.min(wrap.clientWidth-28,innerHeight*.8*C.pw/C.ph));k=W/C.pw;
+ const st=$('stage');st.style.width=W+'px';
+ const ph=$('photoEl'),pu=url('photo',C.photo);if(ph.getAttribute('src')!==pu)ph.src=pu;
+ for(const n of['head','feet']){const h=$(n==='head'?'hHead':'hFeet');h.style.left=C[n].x*k+'px';h.style.top=C[n].y*k+'px'}
+ const Hh=C.ph*k;$('ov').setAttribute('viewBox',`0 0 ${W} ${Hh}`);
+ $('ov').innerHTML=`<line x1="${C.head.x*k}" y1="${C.head.y*k}" x2="${C.feet.x*k}" y2="${C.feet.y*k}" stroke="#2d5a88" stroke-width="2" stroke-dasharray="6 5" opacity=".8"/>`;
+ const w=worn(),ids2=new Set(w.map(i=>i.id));
+ for(const el of [...st.querySelectorAll('img.wear')])if(!ids2.has(el.dataset.drag))el.remove();
+ w.forEach((it,idx)=>{if(!it.pos)it.pos=defPos(it);let el=st.querySelector(`img.wear[data-drag="${it.id}"]`);
+  if(!el){el=document.createElement('img');el.className='wear';el.dataset.drag=it.id;el.alt=it.name;el.draggable=false;st.insertBefore(el,$('ov'))}
+  const u=url(it.id,it.blob);if(el.getAttribute('src')!==u)el.src=u;
+  const m=mid(it),s=scaleOf(it);
+  Object.assign(el.style,{width:it.w+'px',height:it.h+'px',zIndex:10+idx,opacity:it.op??1,transform:`translate(${it.pos.x*k}px,${it.pos.y*k}px) rotate(${it.rot||0}deg) scale(${s*k}) translate(${-m.x}px,${-m.y}px)`});
+  el.classList.toggle('sel',it.id===sel)});
+ $('calNote').textContent=`以身高 ${bodyH()} cm 換算`+(v('height')?'':'（請到「選尺寸」頁填身高）');
+}
+function cpanel(){
+ const e=est(),w=worn();
+ $('worn').innerHTML=w.length?[...w].reverse().map(it=>{const g=sizeG(it,it.size)||{};
+  const gl=['shoulder','chest','waist','hip','length','sleeve'].filter(x=>g[x]!=null).map(x=>`${FK[x].n} ${fmt(g[x])}`).join('・');
+  const bl=['shoulder','chest','waist','hip'].filter(x=>g[x]!=null).map(x=>`${FK[x].n} ${v('b_'+x)||e[x]||'?'}`).join('・');
+  return`<div class="wornrow ${it.id===sel?'sel':''}" data-id="${it.id}"><div class="wr-h"><b>${esc(it.name)}</b><span><button class="btn sm" data-act="up" type="button">上移</button><button class="btn sm" data-act="down" type="button">下移</button><button class="btn sm" data-act="off" type="button">脫下</button></span></div>
+  ${it.sizes.length?`<div class="chips">${it.sizes.map(s=>`<button type="button" data-act="size" data-v="${esc(s.name)}" aria-pressed="${s.name===it.size}">${esc(s.name)}</button>`).join('')}</div>`:''}
+  ${gl?`<p class="note" style="margin:0">衣服 ${gl}${bl?`<br>你　 ${bl}`:''}</p>`:''}
+  <div class="ctl"><span>旋轉</span><input type="range" data-act="rot" min="-30" max="30" step="1" value="${it.rot||0}" aria-label="旋轉"><span>${it.rot||0}°</span></div>
+  <div class="ctl"><span>微調大小</span><input type="range" data-act="fine" min="85" max="115" step="1" value="${Math.round((it.fine||1)*100)}" aria-label="微調大小"><span>${Math.round((it.fine||1)*100)}%</span></div>
+  <div class="ctl"><span>透明度</span><input type="range" data-act="op" min="30" max="100" step="5" value="${Math.round((it.op??1)*100)}" aria-label="透明度"><span>${Math.round((it.op??1)*100)}%</span></div></div>`}).join('')
+  :'<p class="note">還沒穿任何衣服。點下面衣櫥裡的衣服就能穿上。</p>';
+ $('thumbs').innerHTML=C.items.length?C.items.map(it=>`<div class="thumb ${it.worn?'on':''}" data-id="${it.id}"><button class="tb" type="button" data-act="wear" aria-pressed="${!!it.worn}"><img src="${url(it.id,it.blob)}" alt=""><small>${esc(it.name)}${it.size?' · '+esc(it.size):''}</small></button><button class="del" type="button" data-act="del">刪除</button></div>`).join('')
+  :'<p class="note" style="grid-column:1/-1">衣櫥是空的。按「新增衣服」放進第一件。</p>';
+}
+function crender(){cstage();cpanel()}
+const find=id=>C.items.find(i=>i.id===id);
+
+async function setPhoto(file){if(!file)return;try{const c=await shrink(file,1400);C.photo=await toBlob(c,'image/jpeg',.88);C.pw=c.width;C.ph=c.height;C.head={x:c.width/2,y:c.height*.04};C.feet={x:c.width/2,y:c.height*.97};for(const it of C.items)it.pos=null;csave();crender()}catch(e){$('cNote').textContent=e.message}}
+$('photoIn').addEventListener('change',ev=>{setPhoto(ev.target.files[0]);ev.target.value=''});
+$('photoIn2').addEventListener('change',ev=>{setPhoto(ev.target.files[0]);ev.target.value=''});
+
+function dragger(root,getObj,scaleFn,onMove,onEnd){let d=null;
+ root.addEventListener('pointerdown',ev=>{const t=ev.target.closest('[data-drag]');if(!t||!root.contains(t))return;const o=getObj(t.dataset.drag);if(!o)return;ev.preventDefault();d={o,x:ev.clientX,y:ev.clientY,ox:o.x,oy:o.y,s:scaleFn()};try{t.setPointerCapture(ev.pointerId)}catch(e){}});
+ root.addEventListener('pointermove',ev=>{if(!d)return;d.o.x=d.ox+(ev.clientX-d.x)/d.s;d.o.y=d.oy+(ev.clientY-d.y)/d.s;onMove()});
+ const end=()=>{if(d){d=null;onEnd()}};root.addEventListener('pointerup',end);root.addEventListener('pointercancel',end)}
+dragger($('stage'),id=>{if(id==='head'||id==='feet')return C[id];const it=find(id);if(it&&sel!==id){sel=id;cpanel()}return it&&it.pos},()=>k,cstage,()=>{csave();cpanel()});
+
+$('worn').addEventListener('click',ev=>{const b=ev.target.closest('button[data-act]');if(!b)return;const it=find(b.closest('[data-id]').dataset.id);if(!it)return;const a=b.dataset.act;sel=it.id;
+ if(a==='off')it.worn=false;
+ if(a==='size')it.size=b.dataset.v;
+ if(a==='up'||a==='down'){const w=worn(),i=w.indexOf(it),j=a==='up'?i+1:i-1;if(w[j]){const z=it.z;it.z=w[j].z;w[j].z=z}}
+ csave();crender()});
+$('worn').addEventListener('input',ev=>{const r=ev.target;if(r.type!=='range')return;const it=find(r.closest('[data-id]').dataset.id);const x=+r.value,a=r.dataset.act;
+ if(a==='rot'){it.rot=x;r.nextElementSibling.textContent=x+'°'}if(a==='fine'){it.fine=x/100;r.nextElementSibling.textContent=x+'%'}if(a==='op'){it.op=x/100;r.nextElementSibling.textContent=x+'%'}
+ sel=it.id;cstage();csave()});
+$('thumbs').addEventListener('click',ev=>{const b=ev.target.closest('button[data-act]');if(!b)return;const id=b.closest('[data-id]').dataset.id,it=find(id);if(!it)return;
+ if(b.dataset.act==='wear'){it.worn=!it.worn;if(it.worn){it.z=(BASEZ[it.type]||2)+Math.random()*.01;sel=id;if(!C.photo)$('cNote').textContent='先放一張全身照，衣服才會出現在身上。'}}
+ if(b.dataset.act==='del'){if(b.dataset.sure){C.items=C.items.filter(i=>i!==it);if(sel===id)sel=null}else{b.dataset.sure=1;b.textContent='確定刪除？';setTimeout(()=>{if(b.isConnected){delete b.dataset.sure;b.textContent='刪除'}},3000);return}}
+ csave();crender()});
+
+/* 新增衣服 */
+function curSizes(){const p=parse($('chart').value);return p&&p.sizes.length&&p.cols.length?toCm(p).sizes:[]}
+function openEditor(){const sz=curSizes();E={sizes:sz,src:null,manual:false};
+ $('editor').hidden=false;$('edStage').hidden=true;$('eStatus').textContent='白底平拍圖效果最好，可以從網站長按存圖。';
+ $('eType').value=S.type;$('eName').value=TYPES[S.type]+' '+(C.items.length+1);
+ $('eSize').innerHTML=sz.length?sz.map(s=>`<option>${esc(s.name)}</option>`).join(''):'<option value="">（尺寸表是空的）</option>';
+ if(last&&last.rank[0])$('eSize').value=last.rank[0].name;
+ const has=x=>sz.some(s=>s.g[x]!=null);
+ $('eDim').value=S.type==='pants'?(has('waist')?'waist':'length'):has('shoulder')?'shoulder':has('chest')?'chest':'length';
+ updCm();$('editor').scrollIntoView({behavior:'smooth',block:'start'})}
+function updCm(){if(!E||E.manual)return;const s=E.sizes.find(z=>z.name===$('eSize').value),d=$('eDim').value,g=s&&s.g[d];$('eCm').value=g!=null?fmt(FK[d].c?g/2:g):'';
+ if(g==null)$('eStatus').textContent='尺寸表沒有這一欄，請自己填這段的公分數。'}
+$('eSize').addEventListener('change',updCm);$('eDim').addEventListener('change',()=>{E&&(E.manual=false);updCm()});
+$('eCm').addEventListener('input',()=>{if(E)E.manual=true});
+function cut(src,tol){const w=src.width,h=src.height,s=src.data,o=new ImageData(new Uint8ClampedArray(s),w,h),d=o.data;if(tol<=0)return o;
+ const cs=[0,w-1,(h-1)*w,h*w-1].map(p=>p*4),bg=[0,1,2].map(c=>cs.reduce((a,i)=>a+s[i+c],0)/4);
+ const df=p=>Math.hypot(s[p*4]-bg[0],s[p*4+1]-bg[1],s[p*4+2]-bg[2]);
+ const seen=new Uint8Array(w*h),stk=[];for(let x=0;x<w;x++)stk.push(x,(h-1)*w+x);for(let y=0;y<h;y++)stk.push(y*w,y*w+w-1);
+ while(stk.length){const p=stk.pop();if(seen[p]||df(p)>tol)continue;seen[p]=1;d[p*4+3]=0;const x=p%w;if(x>0)stk.push(p-1);if(x<w-1)stk.push(p+1);if(p>=w)stk.push(p-w);if(p<w*h-w)stk.push(p+w)}
+ for(let p=0;p<w*h;p++){if(seen[p])continue;const x=p%w;if((x>0&&seen[p-1])||(x<w-1&&seen[p+1])||(p>=w&&seen[p-w])||(p<w*h-w&&seen[p+w])){const t=(df(p)-tol)/(tol*.8);d[p*4+3]=Math.min(d[p*4+3],Math.round(255*Math.min(1,t)))}}
+ return o}
+let cutT;
+function applyCut(){if(!E||!E.src)return;const c=$('ecv');c.width=E.src.width;c.height=E.src.height;c.getContext('2d').putImageData(cut(E.src,+$('eTol').value),0,0);edPlace()}
+function edPlace(){if(!E||!E.src)return;const c=$('ecv'),s=c.clientWidth/E.src.width||1;
+ for(const n of['a','b']){const h=$(n==='a'?'eA':'eB');h.style.left=E[n].x*s+'px';h.style.top=E[n].y*s+'px'}
+ $('eov').setAttribute('viewBox',`0 0 ${c.clientWidth} ${c.clientHeight}`);
+ $('eov').innerHTML=`<line x1="${E.a.x*s}" y1="${E.a.y*s}" x2="${E.b.x*s}" y2="${E.b.y*s}" stroke="#e8503a" stroke-width="2.5"/>`}
+$('eImg').addEventListener('change',async ev=>{const f=ev.target.files[0];ev.target.value='';if(!f||!E)return;
+ try{const c=await shrink(f,1000);E.src=c.getContext('2d').getImageData(0,0,c.width,c.height);E.a={x:c.width*.28,y:c.height*.18};E.b={x:c.width*.72,y:c.height*.18};
+  $('edStage').hidden=false;applyCut();$('eStatus').textContent='調整去背強度，再把紅點拖到要量的位置。'}catch(e){$('eStatus').textContent=e.message}});
+$('eTol').addEventListener('input',()=>{$('eTolV').textContent=$('eTol').value;clearTimeout(cutT);cutT=setTimeout(applyCut,120)});
+dragger($('edStage'),id=>E&&E[id],()=>$('ecv').clientWidth/E.src.width,edPlace,()=>{});
+$('addBtn').addEventListener('click',openEditor);
+$('eCancel').addEventListener('click',()=>{$('editor').hidden=true;E=null});
+$('eSave').addEventListener('click',async()=>{if(!E||!E.src){$('eStatus').textContent='先選一張衣服圖片。';return}
+ const cm=parseFloat($('eCm').value);if(!(cm>0)){$('eStatus').textContent='請填紅點那段的公分數。';return}
+ if(dist(E.a,E.b)<10){$('eStatus').textContent='兩個紅點太近了，請拉到衣服兩側。';return}
+ const blob=await toBlob($('ecv'),'image/png');const type=$('eType').value,size=$('eSize').value;
+ const it={id:'i'+Date.now().toString(36),name:$('eName').value.trim()||'新衣服',type,blob,w:E.src.width,h:E.src.height,a:E.a,b:E.b,dim:$('eDim').value,sizes:E.sizes,size,saved:size,cm,worn:true,pos:null,rot:0,fine:1,op:1,z:(BASEZ[type]||2)+Math.random()*.01};
+ C.items.push(it);sel=it.id;E=null;$('editor').hidden=true;csave();crender();
+ if(!C.photo)$('cNote').textContent='已存進衣櫥。放一張全身照就能看到穿上的樣子。';
+ $('stageWrap').scrollIntoView({behavior:'smooth',block:'start'})});
+
+$('lookBtn').addEventListener('click',async()=>{const out=$('look'),btn=$('lookBtn');if(!sample)return;
+ if(!C.photo||!worn().length){out.textContent='先放全身照並穿上至少一件衣服。';return}
+ btn.disabled=true;out.textContent='合成圖片中…';
+ try{const c=document.createElement('canvas');c.width=C.pw;c.height=C.ph;const x=c.getContext('2d');x.drawImage(await loadImg(C.photo),0,0);
+  for(const it of worn()){const im=await loadImg(it.blob),m=mid(it),s=scaleOf(it);x.setTransform(1,0,0,1,0,0);x.globalAlpha=it.op??1;x.translate(it.pos.x,it.pos.y);x.rotate((it.rot||0)*Math.PI/180);x.scale(s,s);x.translate(-m.x,-m.y);x.drawImage(im,0,0)}
+  const blob=await toBlob(c,'image/jpeg',.85);out.textContent='思考中…';
+  const info={身高:bodyH(),體重:v('weight'),衣服:worn().map(it=>({名稱:it.name,類型:TYPES[it.type],目前尺寸:it.size,尺寸資料_cm:sizeG(it,it.size),其他尺寸:it.sizes.map(s=>s.name)}))};
+  await sample(`這張是使用者的全身照，上面用 2D 疊圖的方式，依照尺寸表的實際公分數把衣服縮放後放上去（不是真的穿上，皺褶、立體感和遮擋都不準，請不要評論這些）。請用繁體中文、200 字內回答：每件衣服目前的尺寸在長度落點、肩線位置、寬窄比例上是否合適，要不要換大或換小一號；最後一句給整體搭配建議。不要用 markdown 標題，不要評論使用者的身材或長相。資料：${JSON.stringify(info)}`,{images:[blob],modelTier:'default',cache:false,onText:({text})=>{out.textContent=text}})}
+ catch(e){fail(out,e)}finally{btn.disabled=false}});
+
+$('toCloset').addEventListener('click',()=>{location.hash='closet';setTimeout(openEditor,50)});
+function route(){const c=location.hash==='#closet';$('v-size').hidden=c;$('v-closet').hidden=!c;$('tab-size').setAttribute('aria-current',c?'false':'page');$('tab-closet').setAttribute('aria-current',c?'page':'false');if(c)crender()}
+addEventListener('hashchange',route);
+new ResizeObserver(()=>{if(!$('v-closet').hidden){cstage();edPlace()}}).observe(document.body);
+try{idb.get('closet').then(x=>{if(x)Object.assign(C,x);route()}).catch(()=>{noSave();route()})}catch(e){noSave();route()}
+route();
+}
+</script>
+</body>
+</html>
