@@ -78,6 +78,16 @@ textarea{font-family:'Barlow Condensed','Noto Sans TC',sans-serif;font-size:18px
 .parsed{font-size:14px;margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--field)}
 .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
 [hidden]{display:none!important}
+.urlrow{display:flex;gap:8px;margin-top:18px;max-width:640px}
+.urlrow input{flex:1;min-height:50px;font-size:16px}
+.urlrow .btn{min-height:50px;padding:8px 22px}
+#urlStatus{margin:8px 0 0;max-width:640px}
+.prod{display:flex;gap:12px;align-items:center;margin-top:12px;max-width:640px;padding:10px;border:1px solid var(--line);border-radius:12px}
+.prod img{width:64px;height:64px;object-fit:cover;border-radius:8px;flex:none;background:var(--field)}
+.prod .pt{flex:1;font-size:15px;line-height:1.35}
+.prod .pt small{display:block;color:var(--mut);font-size:13px;margin-top:4px}
+.cands{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pxset{margin-top:18px;font-size:14px}.pxset summary{cursor:pointer;color:var(--mut);min-height:32px}
 .tabs{display:flex;gap:8px;padding:14px max(5vw,16px) 0;max-width:calc(1240px + 10vw);margin:0 auto}
 .tabs a{min-height:44px;display:inline-flex;align-items:center;padding:8px 18px;border-radius:999px;text-decoration:none;color:var(--ink);border:1px solid var(--line);font-weight:500}
 .tabs a[aria-current=page]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
@@ -130,6 +140,12 @@ input[type=range]{padding:0;min-height:34px;background:none;border:0;accent-colo
 <header class="band top"><div class="wrap">
   <h1>該買哪個尺寸？</h1>
   <p class="lede">貼上網站的尺寸表，填你的身材，或量一件你穿起來剛好的衣服，就能算出該下單的尺寸，並看到每個部位會緊還是鬆。</p>
+  <form class="urlrow" id="urlForm" autocomplete="off">
+    <input id="u_url" type="url" inputmode="url" placeholder="貼上商品網址，自動帶入尺寸表" aria-label="商品網址">
+    <button class="btn ink" id="urlBtn" type="submit">匯入</button>
+  </form>
+  <p class="status" id="urlStatus" aria-live="polite"></p>
+  <div id="urlPick"></div>
   <p class="samp" id="sampLine">目前填的是範例資料，換成你的數字就會即時更新。</p>
 </div></header>
 
@@ -176,6 +192,11 @@ input[type=range]{padding:0;min-height:34px;background:none;border:0;accent-colo
       <div><label class="f" for="c_unit">單位</label><select id="c_unit"><option value="cm">公分</option><option value="inch">英吋</option></select></div>
     </div>
     <div class="parsed" id="parsed"></div>
+    <details class="pxset"><summary>網址匯入的抓取服務設定</summary>
+      <label class="f" for="u_proxy">抓取服務網址（Cloudflare Worker）</label>
+      <input id="u_proxy" type="url" inputmode="url" placeholder="https://fit-size-proxy.xxx.workers.dev">
+      <p class="hint">網頁本身不能直接讀別的網站，所以要透過這個小服務幫忙抓。留空就用工具內建的設定。</p>
+    </details>
   </section>
 
   <section>
@@ -482,9 +503,10 @@ $('thumbs').addEventListener('click',ev=>{const b=ev.target.closest('button[data
 
 /* 新增衣服 */
 function curSizes(){const p=parse($('chart').value);return p&&p.sizes.length&&p.cols.length?toCm(p).sizes:[]}
-function openEditor(){const sz=curSizes();E={sizes:sz,src:null,manual:false};
+function openEditor(o={}){const sz=curSizes();E={sizes:sz,src:null,manual:false};
  $('editor').hidden=false;$('edStage').hidden=true;$('eStatus').textContent='白底平拍圖效果最好，可以從網站長按存圖。';
- $('eType').value=S.type;$('eName').value=TYPES[S.type]+' '+(C.items.length+1);
+ $('eType').value=S.type;$('eName').value=o.name||(TYPES[S.type]+' '+(C.items.length+1));
+ if(o.blob)edLoad(o.blob);
  $('eSize').innerHTML=sz.length?sz.map(s=>`<option>${esc(s.name)}</option>`).join(''):'<option value="">（尺寸表是空的）</option>';
  if(last&&last.rank[0])$('eSize').value=last.rank[0].name;
  const has=x=>sz.some(s=>s.g[x]!=null);
@@ -507,9 +529,10 @@ function edPlace(){if(!E||!E.src)return;const c=$('ecv'),s=c.clientWidth/E.src.w
  for(const n of['a','b']){const h=$(n==='a'?'eA':'eB');h.style.left=E[n].x*s+'px';h.style.top=E[n].y*s+'px'}
  $('eov').setAttribute('viewBox',`0 0 ${c.clientWidth} ${c.clientHeight}`);
  $('eov').innerHTML=`<line x1="${E.a.x*s}" y1="${E.a.y*s}" x2="${E.b.x*s}" y2="${E.b.y*s}" stroke="#e8503a" stroke-width="2.5"/>`}
-$('eImg').addEventListener('change',async ev=>{const f=ev.target.files[0];ev.target.value='';if(!f||!E)return;
+$('eImg').addEventListener('change',ev=>{const f=ev.target.files[0];ev.target.value='';if(f&&E)edLoad(f)});
+async function edLoad(f){
  try{const c=await shrink(f,1000);E.src=c.getContext('2d').getImageData(0,0,c.width,c.height);E.a={x:c.width*.28,y:c.height*.18};E.b={x:c.width*.72,y:c.height*.18};
-  $('edStage').hidden=false;applyCut();$('eStatus').textContent='調整去背強度，再把紅點拖到要量的位置。'}catch(e){$('eStatus').textContent=e.message}});
+  $('edStage').hidden=false;applyCut();$('eStatus').textContent='調整去背強度，再把紅點拖到要量的位置。'}catch(e){$('eStatus').textContent=e.message}}
 $('eTol').addEventListener('input',()=>{$('eTolV').textContent=$('eTol').value;clearTimeout(cutT);cutT=setTimeout(applyCut,120)});
 dragger($('edStage'),id=>E&&E[id],()=>$('ecv').clientWidth/E.src.width,edPlace,()=>{});
 $('addBtn').addEventListener('click',openEditor);
@@ -533,7 +556,53 @@ $('lookBtn').addEventListener('click',async()=>{const out=$('look'),btn=$('lookB
   await sample(`這張是使用者的全身照，上面用 2D 疊圖的方式，依照尺寸表的實際公分數把衣服縮放後放上去（不是真的穿上，皺褶、立體感和遮擋都不準，請不要評論這些）。請用繁體中文、200 字內回答：每件衣服目前的尺寸在長度落點、肩線位置、寬窄比例上是否合適，要不要換大或換小一號；最後一句給整體搭配建議。不要用 markdown 標題，不要評論使用者的身材或長相。資料：${JSON.stringify(info)}`,{images:[blob],modelTier:'default',cache:false,onText:({text})=>{out.textContent=text}})}
  catch(e){fail(out,e)}finally{btn.disabled=false}});
 
-$('toCloset').addEventListener('click',()=>{location.hash='closet';setTimeout(openEditor,50)});
+$('toCloset').addEventListener('click',()=>{location.hash='closet';setTimeout(()=>openEditor(prod&&prod.blob?{blob:prod.blob,name:prod.name}:{}),50)});
+
+/* ---------- 網址匯入 ---------- */
+const PROXY_DEFAULT='https://fit-size-proxy.liyuan02.workers.dev';
+let prod=null;
+try{$('u_proxy').value=localStorage.getItem('fit-proxy')||''}catch(e){}
+$('u_proxy').addEventListener('change',()=>{try{localStorage.setItem('fit-proxy',$('u_proxy').value.trim())}catch(e){}});
+const proxy=()=>($('u_proxy').value.trim()||PROXY_DEFAULT).replace(/\/+$/,'');
+const px=u=>proxy()+'/?url='+encodeURIComponent(u);
+async function pget(u){let r;try{r=await fetch(px(u))}catch(e){throw new Error('連不到抓取服務。在 Claude 裡開的版本不能連外，請用 GitHub 網址版；或檢查抓取服務網址。')}
+ if(!r.ok){const t=await r.text().catch(()=>'');throw new Error(r.status===403||r.status===429?'這個網站擋掉了自動讀取，請改用截圖或手動貼上尺寸表。':`讀取失敗（${r.status}）${t.slice(0,60)}`)}return r}
+async function getHTML(u){const r=await pget(u),buf=await r.arrayBuffer(),ct=r.headers.get('content-type')||'';
+ let cs=(ct.match(/charset=["']?([\w-]+)/i)||[])[1];if(!cs){const head=new TextDecoder('windows-1252').decode(buf.slice(0,6000));cs=(head.match(/charset=["']?([\w-]+)/i)||[])[1]}
+ let t;try{t=new TextDecoder(cs||'utf-8').decode(buf)}catch(e){t=new TextDecoder().decode(buf)}return{html:t,final:r.headers.get('X-Final-URL')||u}}
+const clean=s=>(s||'').replace(/\s+/g,' ').trim();
+function tableText(tb){const grid=[];[...tb.rows].forEach((r,i)=>{grid[i]=grid[i]||[];let j=0;for(const c of r.cells){while(grid[i][j]!=null)j++;const t=clean(c.textContent).replace(/\s/g,'').replace(/[|,，、;；]/g,'/')||'-',rs=Math.min(c.rowSpan||1,20),cs=Math.min(c.colSpan||1,20);for(let a=0;a<rs;a++){grid[i+a]=grid[i+a]||[];for(let b=0;b<cs;b++)grid[i+a][j+b]=t}j+=cs}});
+ return grid.filter(r=>r&&r.some(x=>x&&x!=='-')).map(r=>Array.from(r,x=>x||'-').join('\t')).join('\n')}
+function guess(text){return{kind:/適合|適穿|建議|身高|體重|bodysize|body/i.test(text.split('\n')[0])?'body':'garment',unit:/inch|英吋|吋/i.test(text)?'inch':'cm'}}
+function extract(html,base){const doc=new DOMParser().parseFromString(html,'text/html');const abs=s=>{try{return new URL(s,base).href}catch(e){return null}};
+ const meta=n=>doc.querySelector(`meta[property="${n}"],meta[name="${n}"]`)?.content;
+ let name=meta('og:title')||clean(doc.title),img=meta('og:image')||meta('twitter:image');
+ for(const s of doc.querySelectorAll('script[type="application/ld+json"]')){try{const j=[].concat(JSON.parse(s.textContent));for(const x of j.flatMap(y=>y['@graph']||[y]))if(/Product/i.test(x['@type'])){name=x.name||name;img=img||[].concat(x.image)[0]?.url||[].concat(x.image)[0]}}catch(e){}}
+ const cands=[...doc.querySelectorAll('table')].map(tb=>{const text=tableText(tb),p=parse(text);return{text,p,score:p&&p.cols.length?p.cols.length*10+p.sizes.length:0}}).filter(c=>c.score&&c.p.sizes.length>=2).sort((a,b)=>b.score-a.score);
+ const chartImgs=[...doc.querySelectorAll('img')].map(i=>({src:i.getAttribute('data-src')||i.getAttribute('data-original')||i.getAttribute('src')||'',alt:(i.alt||'')+(i.title||'')})).filter(i=>/size|尺寸|尺碼|measure/i.test(i.src+i.alt)).map(i=>abs(i.src)).filter(Boolean);
+ const txt=[];const raw=(doc.body?.innerText||doc.body?.textContent||'');let pos=raw.search(/尺寸表|尺碼表|尺寸對照|size ?chart|肩寬|胸圍|衣長/i);if(pos>=0)txt.push(raw.slice(Math.max(0,pos-300),pos+4000));
+ return{name:clean(name).slice(0,80),img:img&&abs(img),cands,chartImgs:[...new Set(chartImgs)].slice(0,3),near:clean(txt.join(' ')).slice(0,5000)}}
+function useTable(text,how){$('chart').value=text;const g=guess(text);$('c_kind').value=g.kind;$('c_unit').value=g.unit;$('c_flat').value='auto';changed();$('urlStatus').textContent=how}
+function showProd(){$('urlPick').innerHTML=prod?`<div class="prod">${prod.thumb?`<img src="${prod.thumb}" alt="">`:''}<div class="pt">${esc(prod.name||'商品')}<small>${esc(prod.host)}</small></div>${prod.blob?'<button class="btn sm" type="button" id="prodCloset">加入衣櫥試穿</button>':''}</div>`+(prod.cands&&prod.cands.length>1?`<div class="cands">${prod.cands.map((c,i)=>`<button class="btn sm" type="button" data-cand="${i}">表格 ${i+1}（${c.p.sizes.length} 個尺寸）</button>`).join('')}</div>`:''):''}
+$('urlPick').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;if(b.id==='prodCloset'){location.hash='closet';setTimeout(()=>openEditor({blob:prod.blob,name:prod.name}),50)}
+ if(b.dataset.cand!=null){const c=prod.cands[+b.dataset.cand];useTable(c.text,`已換成表格 ${+b.dataset.cand+1}。`)}});
+$('urlForm').addEventListener('submit',async ev=>{ev.preventDefault();const st=$('urlStatus'),btn=$('urlBtn');let u=$('u_url').value.trim();
+ if(!u){st.textContent='請先貼上商品網址。';return}if(!/^https?:\/\//i.test(u))u='https://'+u;
+ if(!proxy()){st.textContent='還沒設定抓取服務。請到下方「網站尺寸表」的「網址匯入的抓取服務設定」填入網址。';document.querySelector('.pxset').open=true;return}
+ btn.disabled=true;st.textContent='讀取商品頁中…';prod=null;showProd();
+ try{const{html,final}=await getHTML(u),x=extract(html,final);
+  prod={name:x.name,host:new URL(final).hostname,cands:x.cands,blob:null,thumb:null};
+  if(x.img){try{const r=await pget(x.img),b=await r.blob();if(/^image\//.test(b.type)){prod.blob=b;prod.thumb=URL.createObjectURL(b)}}catch(e){}}
+  showProd();
+  if(x.cands.length){useTable(x.cands[0].text,`找到尺寸表，已自動帶入${x.cands.length>1?`（共 ${x.cands.length} 個表格，可在下面切換）`:''}。請對一下數字。`)}
+  else if(sample&&(x.near||x.chartImgs.length)){st.textContent='網頁上沒有文字表格，請 Claude 從內容裡找尺寸…';
+   const imgs=[];let canImg=false;try{canImg=!!(await sample.limits())?.images}catch(e){}
+   if(canImg)for(const s of x.chartImgs){try{const b=await(await pget(s)).blob();if(/^image\//.test(b.type))imgs.push(b)}catch(e){}}
+   const r=await sample.json(`以下是服飾商品頁的文字${imgs.length?'和可能是尺寸表的圖片':''}。找出各尺寸的量身數據，只回 JSON：{"table":"用 \\t 分欄、\\n 分列，第一列表頭、第一欄尺寸名稱，欄位名用繁體中文（肩寬、胸圍或胸寬、腰圍、臀圍、衣長、褲長、袖長…），數值只寫數字；找不到就回空字串","kind":"garment 或 body","flat":"flat、circ 或 unknown","unit":"cm 或 inch"}\n商品：${x.name}\n文字：${x.near}`,{images:imgs.length?imgs:undefined,modelTier:'default'});
+   if(r&&r.table){useTable(r.table,'Claude 從網頁內容整理出尺寸表，請對一下數字。');if(r.kind==='body'||r.kind==='garment')$('c_kind').value=r.kind;$('c_flat').value=r.flat==='flat'?'flat':r.flat==='circ'?'circ':'auto';if(r.unit==='inch'||r.unit==='cm')$('c_unit').value=r.unit;changed()}
+   else st.textContent='這個頁面找不到尺寸資料（可能是圖片或要點開才載入）。請截圖上傳或手動貼上。'}
+  else st.textContent=`讀到「${x.name||'商品頁'}」，但頁面上沒有文字形式的尺寸表（${x.chartImgs.length?'看起來是圖片':'可能要點開才載入'}）。請把尺寸表截圖或手動貼到下方。`;
+ }catch(e){st.textContent=e.message}finally{btn.disabled=false}});
 function route(){const c=location.hash==='#closet';$('v-size').hidden=c;$('v-closet').hidden=!c;$('tab-size').setAttribute('aria-current',c?'false':'page');$('tab-closet').setAttribute('aria-current',c?'page':'false');if(c)crender()}
 addEventListener('hashchange',route);
 new ResizeObserver(()=>{if(!$('v-closet').hidden){cstage();edPlace()}}).observe(document.body);
