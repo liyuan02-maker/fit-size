@@ -180,7 +180,7 @@ input[type=range]{padding:0;min-height:34px;background:none;border:0;accent-colo
 <section class="band inputs"><div class="wrap">
   <section>
     <h2>網站尺寸表</h2>
-    <div class="row" id="imgRow" hidden>
+    <div class="row" id="imgRow">
       <label class="btn">上傳尺寸表截圖辨識<input type="file" id="chartImg" accept="image/*" multiple hidden></label>
       <span class="status" id="imgStatus"></span>
     </div>
@@ -392,12 +392,29 @@ render();
 
 (async()=>{try{if(!window.claude||!claude.use)return;sample=await claude.use('sample');if(!sample)return;
  $('aiBox').hidden=false;let img=false;try{img=!!(await sample.limits())?.images}catch(e){}
- if(img){$('imgRow').hidden=false;$('lookBox').hidden=false}else $('prodLbl').hidden=true}catch(e){}})();
+ sampleImg=img;if(img){$('lookBox').hidden=false}else $('prodLbl').hidden=true}catch(e){}})();
 
-const fail=(el,e)=>{if(e&&e.code==='not_granted'){$('aiBox').hidden=true;$('imgRow').hidden=true}el.textContent=e&&e.code==='rate_limited'?'太多次了，稍等一下再試。':'沒有成功：'+((e&&e.message)||'請再試一次')};
+const fail=(el,e)=>{if(e&&e.code==='not_granted'){$('aiBox').hidden=true;sampleImg=false}el.textContent=e&&e.code==='rate_limited'?'太多次了，稍等一下再試。':'沒有成功：'+((e&&e.message)||'請再試一次')};
 
-$('chartImg').addEventListener('change',async ev=>{const files=[...ev.target.files];ev.target.value='';if(!files.length||!sample)return;
- const st=$('imgStatus');st.textContent='辨識中…';
+let sampleImg=false,tessP=null,tw=null,ocrSt=null;
+function loadTess(){return tessP||(tessP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';s.onload=()=>res(window.Tesseract);s.onerror=()=>{tessP=null;rej(new Error('載入辨識工具失敗，請檢查網路'))};document.head.appendChild(s)}))}
+async function ocrWorker(){if(tw)return tw;const T=await loadTess();
+ const w=await T.createWorker(['chi_tra','eng'],1,{logger:m=>{if(!ocrSt||!m.status)return;const p=m.progress?' '+Math.round(m.progress*100)+'%':'';ocrSt.textContent=(/recogniz/i.test(m.status)?'辨識中':/load|download|fetch/i.test(m.status)?'下載辨識模型（第一次需要一點時間）':'準備中')+p}});
+ await w.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'});return tw=w}
+async function prep(blob){const img=await loadImg(blob);const r=Math.max(1,Math.min(3,1600/img.naturalWidth));const c=document.createElement('canvas');c.width=Math.round(img.naturalWidth*r);c.height=Math.round(img.naturalHeight*r);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);try{x.filter='grayscale(1) contrast(1.4)'}catch(e){}x.drawImage(img,0,0,c.width,c.height);return c}
+function fixCell(t){t=t.replace(/[０-９]/g,d=>String.fromCharCode(d.charCodeAt(0)-65248)).replace(/[|｜_]/g,'');if(/\d/.test(t)&&/^[\dOolI.\-~～]+$/.test(t))t=t.replace(/[Oo]/g,'0').replace(/[lI]/g,'1');return t||'-'}
+function linesToTable(data){return(data.lines||[]).map(l=>{const ws=(l.words||[]).filter(w=>w.text.trim());if(!ws.length)return null;
+  const hs=ws.map(w=>w.bbox.y1-w.bbox.y0).sort((a,b)=>a-b),h=hs[hs.length>>1]||20,cells=[];let cur=null;
+  for(const w of ws){const t=w.text.trim(),dig=cur&&/\d$/.test(cur.t)&&/^\d/.test(t);if(cur&&w.bbox.x0-cur.x1<h*(dig?.45:.9)){cur.t+=t;cur.x1=w.bbox.x1}else{cur={t,x1:w.bbox.x1};cells.push(cur)}}
+  return cells.map(c=>fixCell(c.t))}).filter(r=>r&&r.length>1).map(r=>r.join('\t')).join('\n')}
+async function ocr(blob,st){ocrSt=st;st.textContent='準備文字辨識…';const w=await ocrWorker();const{data}=await w.recognize(await prep(blob));return linesToTable(data)}
+const goodChart=t=>{const p=parse(t);return!!(p&&p.cols.length&&p.sizes.length>=2)};
+async function ocrFill(blob,st){const t=await ocr(blob,st);if(!t.trim())throw new Error('圖片上讀不到文字，請換一張清楚一點的截圖');
+ const ok=goodChart(t);useTable(t,ok?'已用文字辨識讀出尺寸表。辨識偶爾會讀錯數字，請對照圖片檢查一次。':'辨識結果不完整，請對照圖片修正下方的表格。',st);return ok}
+$('chartImg').addEventListener('change',async ev=>{const files=[...ev.target.files];ev.target.value='';if(!files.length)return;
+ const st=$('imgStatus');
+ if(!sample||!sampleImg){try{await ocrFill(files[0],st)}catch(e){st.textContent=e.message||'辨識失敗，請再試一次'}return}
+ st.textContent='辨識中…';
  try{const r=await sample.json('你會看到服飾購物網站的尺寸表圖片。只回 JSON，不要其他文字，格式：{"table":"用 \\t 分欄、\\n 分列的表格文字。第一列是表頭，第一欄是尺寸名稱（S、M、L…），欄位名稱用繁體中文（肩寬、胸圍或胸寬、腰圍、臀圍、衣長、褲長、袖長、大腿圍…，照圖上原意），數值只寫數字，範圍寫成 96-100","kind":"garment（衣服本身的尺寸）或 body（建議適穿的身體尺寸）","flat":"flat（平量）、circ（一整圈）或 unknown","unit":"cm 或 inch"}。如果圖上有多張表，取衣服尺寸那張。',{images:files,modelTier:'default'});
   if(!r||!r.table)throw{message:'圖上找不到尺寸表'};
   $('chart').value=r.table;if(r.kind==='body'||r.kind==='garment')$('c_kind').value=r.kind;
@@ -582,7 +599,7 @@ function extract(html,base){const doc=new DOMParser().parseFromString(html,'text
  const chartImgs=[...doc.querySelectorAll('img')].map(i=>({src:i.getAttribute('data-src')||i.getAttribute('data-original')||i.getAttribute('src')||'',alt:(i.alt||'')+(i.title||'')})).filter(i=>/size|尺寸|尺碼|measure/i.test(i.src+i.alt)).map(i=>abs(i.src)).filter(Boolean);
  const txt=[];const raw=(doc.body?.innerText||doc.body?.textContent||'');let pos=raw.search(/尺寸表|尺碼表|尺寸對照|size ?chart|肩寬|胸圍|衣長/i);if(pos>=0)txt.push(raw.slice(Math.max(0,pos-300),pos+4000));
  return{name:clean(name).slice(0,80),img:img&&abs(img),cands,chartImgs:[...new Set(chartImgs)].slice(0,3),near:clean(txt.join(' ')).slice(0,5000)}}
-function useTable(text,how){$('chart').value=text;const g=guess(text);$('c_kind').value=g.kind;$('c_unit').value=g.unit;$('c_flat').value='auto';changed();$('urlStatus').textContent=how}
+function useTable(text,how,st){$('chart').value=text;const g=guess(text);$('c_kind').value=g.kind;$('c_unit').value=g.unit;$('c_flat').value='auto';changed();(st||$('urlStatus')).textContent=how}
 function showProd(){$('urlPick').innerHTML=prod?`<div class="prod">${prod.thumb?`<img src="${prod.thumb}" alt="">`:''}<div class="pt">${esc(prod.name||'商品')}<small>${esc(prod.host)}</small></div>${prod.blob?'<button class="btn sm" type="button" id="prodCloset">加入衣櫥試穿</button>':''}</div>`+(prod.cands&&prod.cands.length>1?`<div class="cands">${prod.cands.map((c,i)=>`<button class="btn sm" type="button" data-cand="${i}">表格 ${i+1}（${c.p.sizes.length} 個尺寸）</button>`).join('')}</div>`:''):''}
 $('urlPick').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;if(b.id==='prodCloset'){location.hash='closet';setTimeout(()=>openEditor({blob:prod.blob,name:prod.name}),50)}
  if(b.dataset.cand!=null){const c=prod.cands[+b.dataset.cand];useTable(c.text,`已換成表格 ${+b.dataset.cand+1}。`)}});
@@ -601,6 +618,9 @@ $('urlForm').addEventListener('submit',async ev=>{ev.preventDefault();const st=$
    const r=await sample.json(`以下是服飾商品頁的文字${imgs.length?'和可能是尺寸表的圖片':''}。找出各尺寸的量身數據，只回 JSON：{"table":"用 \\t 分欄、\\n 分列，第一列表頭、第一欄尺寸名稱，欄位名用繁體中文（肩寬、胸圍或胸寬、腰圍、臀圍、衣長、褲長、袖長…），數值只寫數字；找不到就回空字串","kind":"garment 或 body","flat":"flat、circ 或 unknown","unit":"cm 或 inch"}\n商品：${x.name}\n文字：${x.near}`,{images:imgs.length?imgs:undefined,modelTier:'default'});
    if(r&&r.table){useTable(r.table,'Claude 從網頁內容整理出尺寸表，請對一下數字。');if(r.kind==='body'||r.kind==='garment')$('c_kind').value=r.kind;$('c_flat').value=r.flat==='flat'?'flat':r.flat==='circ'?'circ':'auto';if(r.unit==='inch'||r.unit==='cm')$('c_unit').value=r.unit;changed()}
    else st.textContent='這個頁面找不到尺寸資料（可能是圖片或要點開才載入）。請截圖上傳或手動貼上。'}
+  else if(x.chartImgs.length){let done=false;
+   for(const src of x.chartImgs){try{const b=await(await pget(src)).blob();if(!/^image\//.test(b.type))continue;const t=await ocr(b,st);if(goodChart(t)){useTable(t,'這個網站的尺寸表是圖片，已用文字辨識讀出來。辨識偶爾會讀錯數字，請對照商品頁檢查一次。');done=true;break}}catch(e){}}
+   if(!done)st.textContent='這個網站的尺寸表是圖片，自動辨識沒讀成功。請把尺寸表截圖後，用「上傳尺寸表截圖辨識」再試，或手動貼上。'}
   else st.textContent=`讀到「${x.name||'商品頁'}」，但頁面上沒有文字形式的尺寸表（${x.chartImgs.length?'看起來是圖片':'可能要點開才載入'}）。請把尺寸表截圖或手動貼到下方。`;
  }catch(e){st.textContent=e.message}finally{btn.disabled=false}});
 function route(){const c=location.hash==='#closet';$('v-size').hidden=c;$('v-closet').hidden=!c;$('tab-size').setAttribute('aria-current',c?'false':'page');$('tab-closet').setAttribute('aria-current',c?'page':'false');if(c)crender()}
